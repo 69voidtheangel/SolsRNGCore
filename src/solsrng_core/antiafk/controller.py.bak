@@ -1,0 +1,124 @@
+from __future__ import annotations
+
+import re
+import shutil
+import subprocess
+import threading
+import time
+from dataclasses import dataclass
+from typing import Callable
+
+
+class WindowError(RuntimeError):
+    pass
+
+
+@dataclass
+class WindowHandle:
+    window_id: str
+    title: str
+
+
+class WindowManager:
+    """X11 window focus helper using xdotool. Safe no-op errors become WindowError."""
+
+    def __init__(self):
+        if shutil.which("xdotool") is None:
+            raise WindowError("xdotool is not installed or not in PATH")
+
+    def active_window(self) -> WindowHandle:
+        wid = self._cmd(["getactivewindow"])
+        title = self._cmd(["getwindowname", wid])
+        return WindowHandle(wid, title)
+
+    def find_game_window(self, title_regex: str = "") -> WindowHandle:
+        raw = self._cmd(["search", "--onlyvisible", "--name", title_regex or ".*"], allow_empty=True)
+        ids = [x for x in raw.splitlines() if x.strip()]
+        if not ids:
+            raise WindowError("No visible game window matched")
+        wid = ids[-1].strip()
+        return WindowHandle(wid, self._cmd(["getwindowname", wid]))
+
+    def focus(self, window: WindowHandle) -> None:
+        self._cmd(["windowactivate", "--sync", window.window_id])
+
+    def press(self, key: str) -> None:
+        self._cmd(["key", "--clearmodifiers", key])
+
+    @staticmethod
+    def _cmd(args: list[str], allow_empty: bool = False) -> str:
+        proc = subprocess.run(["xdotool", *args], text=True, capture_output=True, check=False)
+        if proc.returncode != 0 and not allow_empty:
+            raise WindowError(proc.stderr.strip() or f"xdotool failed: {args}")
+        return proc.stdout.strip()
+
+
+class AntiAFKController:
+    def __init__(self, interval_seconds: float = 120.0, key: str = "space", game_title_regex: str = "", log: Callable[[str], None] | None = None):
+        self.interval_seconds = max(1.0, interval_seconds)
+        self.key = key
+        self.game_title_regex = game_title_regex
+        self.log = log or (lambda _: None)
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._previous: WindowHandle | None = None
+        self._game: WindowHandle | None = None
+        self._lock = threading.Lock()
+
+    @property
+    def running(self) -> bool:
+        return self._thread is not None and self._thread.is_alive()
+
+    def swap_to_game(self) -> WindowHandle:
+        manager = WindowManager()
+        with self._lock:
+            if self._previous is None:
+                self._previous = manager.active_window()
+            self._game = manager.find_game_window(self.game_title_regex)
+            manager.focus(self._game)
+            self.log(f"Swapped to game: {self._game.title}")
+            return self._game
+
+    def restore_previous_window(self) -> None:
+        if not self._previous:
+            self.log("No previous window saved")
+            return
+        manager = WindowManager()
+        previous = self._previous
+        self._previous = None
+        self._game = None
+        try:
+            manager.focus(previous)
+            self.log(f"Restored previous window: {previous.title}")
+        except WindowError as exc:
+            self.log(f"Could not restore previous window: {exc}")
+
+    def start(self) -> None:
+        if self.running:
+            return
+        self.swap_to_game()
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, name="SolsRNG-AntiAFK", daemon=True)
+        self._thread.start()
+        self.log("Anti-AFK started")
+
+    def stop(self, restore: bool = True) -> None:
+        self._stop.set()
+        thread = self._thread
+        if thread and thread is not threading.current_thread():
+            thread.join(timeout=2.0)
+        self._thread = None
+        self.log("Anti-AFK stopped")
+        if restore:
+            self.restore_previous_window()
+
+    def _loop(self) -> None:
+        manager = WindowManager()
+        while not self._stop.wait(self.interval_seconds):
+            try:
+                if self._game:
+                    manager.focus(self._game)
+                    manager.press(self.key)
+                    self.log(f"Anti-AFK key sent: {self.key}")
+            except WindowError as exc:
+                self.log(f"Anti-AFK error: {exc}")

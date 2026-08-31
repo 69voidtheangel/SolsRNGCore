@@ -244,6 +244,50 @@ dependencies.
 > The application itself is Python-based, so the exact dependency installation
 > procedure depends on your distribution.
 
+## Linux Distribution Compatibility
+
+SolsRNGCore is designed as a Linux-first application and should work across
+modern Linux distributions that provide the required Python, Qt, and system
+dependencies.
+
+### Known / Intended Environments
+
+- SteamOS
+- Arch Linux
+- Debian
+- Ubuntu
+- Fedora
+- openSUSE
+- Linux Mint
+- Manjaro
+- EndeavourOS
+- CachyOS
+- Bazzite
+- Pop!_OS
+- Gentoo
+- Void Linux
+- NixOS
+- Alpine Linux
+- Other modern Linux distributions
+
+> SteamOS / Steam Deck is one of the primary development environments.
+> Distribution-specific package names and setup steps may vary.
+
+### Package Manager Examples
+
+| Distribution family | Package manager |
+|---|---|
+| Arch / SteamOS / Arch-based | `pacman` |
+| Debian / Ubuntu / Mint | `apt` |
+| Fedora / RHEL-based | `dnf` |
+| openSUSE | `zypper` |
+| Gentoo | `emerge` |
+| Alpine | `apk` |
+| NixOS | `nix` |
+
+> The application itself is Python-based, so the exact dependency installation
+> procedure depends on your distribution.
+
 ---
 
 # 🎮 Steam Deck

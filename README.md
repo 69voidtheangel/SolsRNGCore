@@ -1,165 +1,350 @@
-SolsRNGCore READ THIS NOW
-A Linux-first Sol's RNG automation and Discord notification core built with Python and PySide6.
+# 🌙 SolsRNGCore
 
-Features
-Discord webhook profiles
-Multiple Discord profiles running simultaneously
-Independent webhook settings for every profile
-Per-profile Roblox private-server links
-Per-biome Discord role IDs
-Per-profile biome notification filters
-Automatic Sober biome detection
-Biome-specific Discord embed styling
-Discord webhook test broadcasting
-Anti-AFK support (STILL A W.I.P)
-PySide6 graphical interface
-Persistent configuration through ~/.config/solsrng/core.json
-Installation
-SolsRNGCore is designed as a Linux-first application. The commands below cover the major Linux distribution families.
+> A Linux-first Sol's RNG automation & Discord notification core.
 
-Debian / Ubuntu / Linux Mint / Pop!_OS / Zorin OS
-Install Python, pip, and virtual-environment support:
+SolsRNGCore is a Linux-focused companion for Sol's RNG, built around live biome monitoring, Discord notifications, per-biome roles, biome artwork, Anti-AFK support, diagnostics, and a clean PySide6 GUI.
 
-sudo apt update
-sudo apt install python3 python3-pip python3-venv
-Then install SolsRNGCore:
+<p align="center">
+<strong>🐧 Linux First • 🎮 Steam Deck Ready • 💬 Discord Powered • 🌙 Midnight UI</strong>
+</p>
 
+---
+
+## ✨ Features
+
+| Feature | Description |
+|---|---|
+| 🌦️ Live Biome Detection | Monitors Sober's Roblox logs and detects actual biome changes |
+| 💬 Multiple Discord Profiles | Configure and run multiple webhook profiles independently |
+| 🎨 Biome Embeds | Send biome notifications with biome artwork |
+| 🔔 Per-Biome Roles | Assign a Discord role ID to individual biomes |
+| 👥 @everyone Fallback | Optional fallback notification for rare biomes |
+| 🔗 Private Server Links | Store a Roblox private-server link per profile |
+| 💤 Anti-AFK | Built-in Anti-AFK support for Sober |
+| 🖥️ PySide6 GUI | Clean midnight-themed graphical interface |
+| 💾 Persistent Configuration | Settings and profiles survive restarts |
+| 📜 Live Diagnostics | Bounded logs for monitoring application activity |
+| 🚨 Fatal Diagnostics | Unexpected failures can generate a compact diagnostic report |
+
+---
+
+## 🌦️ How Biome Detection Works
+
+SolsRNGCore monitors Sober's Roblox logs and reads BloxstrapRPC SetRichPresence events.
+
+Instead of reacting to every Rich Presence update, the monitor keeps track of the current biome and only reacts when the biome actually changes.
+
+Example:
+
+NORMAL → NORMAL → NORMAL
+
+does not generate repeated Discord notifications.
+
+But:
+
+NORMAL → SNOWY
+
+is a real biome transition and generates the appropriate notification.
+
+This keeps Discord notifications tied to actual biome transitions instead of repeated Rich Presence refreshes.
+
+---
+
+## 🌦️ Supported Biomes
+
+NORMAL
+WINDY
+SNOWY
+RAINY
+SANDSTORM
+HELL
+STARFALL
+HEAVEN
+CORRUPTION
+NULL
+PUMPKIN MOON
+GRAVEYARD
+BLAZING SUN
+BLOOD RAIN
+AURORA
+EGGLAND
+GLITCHED
+DREAMSPACE
+CYBERSPACE
+SINGULARITY
+
+---
+
+# 💬 Discord Profiles
+
+Each webhook profile can have its own configuration.
+
+### Per-profile settings
+
+- Webhook URL
+- Enabled / disabled state
+- Biomes to notify
+- Individual biome role IDs
+- @everyone fallback
+- Roblox private-server URL
+- Biome image directory
+
+Profiles operate independently, allowing multiple servers to receive notifications simultaneously without sharing the same settings.
+
+---
+
+## 🔔 Discord Role Notifications
+
+Every supported biome can have its own Discord role ID.
+
+Example:
+
+GLITCHED → <role ID>
+DREAMSPACE → <role ID>
+CYBERSPACE → <role ID>
+SINGULARITY → <role ID>
+
+When a role is configured, the notification can mention that role.
+
+Profiles can also use the optional @everyone fallback for rare biomes when a specific role is not configured.
+
+---
+
+## 🎨 Biome Artwork
+
+Biome images are stored in:
+
+library/biomes/
+
+The application uses the biome name to select the corresponding artwork for Discord notifications.
+
+---
+
+# 💤 Anti-AFK
+
+SolsRNGCore includes configurable Anti-AFK support for Sober.
+
+The Anti-AFK system operates independently from the biome monitor so biome detection and Anti-AFK activity do not need to interfere with each other.
+
+### Current options
+
+- Enable / disable Anti-AFK
+- Configurable interval
+- Configurable input method
+- Window restoration support
+
+---
+
+# 📜 Diagnostics & Logging
+
+SolsRNGCore includes bounded diagnostics so normal operation does not continuously consume memory.
+
+The diagnostic system keeps only a limited number of recent messages in RAM and maintains bounded log output.
+
+### Diagnostic levels
+
+INFO
+WARN
+ERROR
+FATAL
+
+Important events can include:
+
+- Sober biome monitor started
+- Monitoring Sober log
+- Sober current biome
+- Sober biome changed
+- Discord notification queued
+- Discord notification sent
+- Discord notification failed
+- Anti-AFK activity
+- Unexpected application errors
+
+---
+
+# 🚨 Fatal Error Diagnostics
+
+SolsRNGCore includes fatal-error diagnostics for unexpected application termination.
+
+A fatal diagnostic report can contain:
+
+- Failure reason
+- Basic system information
+- Recent bounded diagnostics
+- Python traceback when available
+
+Sensitive webhook tokens are filtered from diagnostic output.
+
+Native crashes such as SIGSEGV are handled separately from ordinary Python exceptions.
+
+---
+
+# 🧠 RAM & Performance
+
+The diagnostic system is intentionally bounded.
+
+The project avoids allowing:
+
+- GUI logs to grow forever
+- Diagnostic history to grow forever
+- Discord work queues to grow without limits
+- Old Sober log history to be repeatedly processed
+
+The goal is to keep SolsRNGCore lightweight during long-running sessions, including extended AFK sessions on Steam Deck.
+
+---
+
+# 🐧 Linux First
+
+SolsRNGCore is developed primarily on Linux, with SteamOS / Steam Deck being one of the main development environments.
+
+The project is designed around Linux-first tooling and the Sober Roblox client.
+
+---
+
+# 🎮 Steam Deck
+
+## Requirements
+
+You will need:
+
+- SteamOS / Linux
+- Python 3
+- pip
+- ydotool / ydotoold
+- Sober
+- A configured Discord webhook
+
+---
+
+## 🚀 Installation
+
+Clone the repository:
+
+git clone https://github.com/69voidtheangel/SolsRNGCore.git
 cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Fedora
-sudo dnf install python3 python3-pip
-Then:
 
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Arch Linux / EndeavourOS / Manjaro
-sudo pacman -Syu python python-pip
-Then:
+Create the virtual environment:
 
-cd SolsRNGCore
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-SteamOS
-SteamOS is Arch Linux-based.
 
-sudo steamos-readonly disable
-sudo pacman -Syu python python-pip
-Then:
+Install dependencies:
+
+pip install -r requirements.txt
+
+Launch:
+
+python main.py
+
+---
+
+# 🧩 Running From an Existing Folder
+
+If you already downloaded the repository:
 
 cd ~/Downloads/SolsRNGCore
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-After installing the system packages, SteamOS can be returned to its normal read-only state:
-
-sudo steamos-readonly enable
-openSUSE Tumbleweed / Leap
-sudo zypper install python3 python3-pip
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-RHEL / Rocky Linux / AlmaLinux / CentOS Stream
-sudo dnf install python3 python3-pip
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Gentoo
-sudo emerge --ask dev-lang/python
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Alpine Linux
-sudo apk add python3 py3-pip
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Void Linux
-sudo xbps-install -S python3 python3-pip
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-NixOS
-For a temporary development environment:
-
-nix-shell -p python3 python3Packages.pip
-Then:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Universal Python Installation
-If your distribution already provides Python 3, pip, and venv, you can use:
-
-cd SolsRNGCore
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
-Running After Installation
-Every time you open a new terminal:
-
-cd SolsRNGCore
 source .venv/bin/activate
 python main.py
-SolsRNGCore is currently developed and tested primarily on Linux, with SteamOS being one of the primary development environments.
 
-Discord Profiles
-SolsRNGCore supports multiple Discord profiles at the same time.
+---
 
-The selected profile is only the profile being edited. All enabled profiles run simultaneously.
+# 🛠️ Development
 
-Each profile has its own webhook, Roblox private-server URL, biome filters, Discord role IDs, and image settings.
+Compile the Python modules:
 
-Biome Notifications
-Biome artwork is stored in library/biomes/.
+python -m py_compile main.py
+python -m py_compile src/solsrng_core/logwatcher.py
+python -m py_compile src/solsrng_core/gui/app.py
+python -m py_compile src/solsrng_core/discord/webhook.py
 
-Supported biome assets include NORMAL, WINDY, SNOWY, RAINY, SANDSTORM, HELL, STARFALL, HEAVEN, CORRUPTION, NULL, PUMPKIN MOON, GRAVEYARD, BLAZING SUN, BLOOD RAIN, AURORA, EGGLAND, GLITCHED, DREAMSPACE, CYBERSPACE, and SINGULARITY.
+The project is intended to fail safely wherever possible.
 
-Discord Embed Styling
-Each biome can have its own title, emoji, embed color, thumbnail artwork, and SolsRNGCore footer branding.
+Discord/network failures should not freeze the GUI, and diagnostics should never become the reason the application crashes.
 
-Webhook Testing
-The Discord test button broadcasts to every enabled profile with a configured webhook URL.
+---
 
-Anti-AFK
-Includes configurable Anti-AFK support for Sober/Roblox gameplay windows.
+# 📁 Project Structure
 
-Running
-python main.py
-Installing Dependencies
-pip install -r requirements.txt
-Repository
+SolsRNGCore/
+├── main.py
+├── README.md
+├── requirements.txt
+├── src/
+│   └── solsrng_core/
+│       ├── antiafk/
+│       ├── diagnostics/
+│       ├── discord/
+│       ├── gui/
+│       ├── config.py
+│       └── logwatcher.py
+└── library/
+    └── biomes/
+
+---
+
+# 🧪 Project Status
+
+SolsRNGCore is actively developed and tested primarily on Linux.
+
+Current development focuses on:
+
+- Reliable live biome monitoring
+- Discord notification reliability
+- Anti-AFK stability
+- Diagnostics
+- Memory efficiency
+- Steam Deck compatibility
+- GUI stability
+
+---
+
+# 🤝 Contributing
+
+Bug reports, testing, ideas, and improvements are welcome.
+
+When reporting a problem, useful information includes:
+
+Operating system:
+SteamOS version:
+Python version:
+SolsRNGCore version / commit:
+What happened:
+Relevant logs:
+
+Please remove Discord webhook tokens or other private information before sharing logs.
+
+---
+
+# 🔐 Security
+
+Never commit your Discord webhook URLs, personal access tokens, passwords, or other credentials to the repository.
+
+Use local configuration for private data.
+
+---
+
+# 🌙 The Project
+
+SolsRNGCore is built around a simple idea:
+
+Keep Sol's RNG monitoring lightweight, reliable, Linux-friendly, and actually useful.
+
+Built with ❤️ on Linux.
+
+<p align="center">
+🌙 <strong>SolsRNGCore</strong> 🌙
+</p>
+
+---
+
+## 🔗 Links
+
+GitHub:
 https://github.com/69voidtheangel/SolsRNGCore
 
-SolsRNGCore — Linux-first Sol's RNG automation & Discord core.
+Project:
+SolsRNGCore
+
+Platform focus:
+🐧 Linux • 🎮 SteamOS • 💻 Steam Deck

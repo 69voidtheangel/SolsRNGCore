@@ -30,8 +30,7 @@ class WebhookProfile:
 class AntiAFKConfig:
     enabled: bool = False
     interval_seconds: float = 120.0
-    game_title_regex: str = ''
-    anti_afk_key: str = 'space'
+    method: str = 'space'
 
 @dataclass
 class AppConfig:
@@ -93,8 +92,12 @@ def _from_dict(data: dict[str, Any]) -> AppConfig:
         anti_afk=AntiAFKConfig(
             enabled=bool(a.get('enabled', True)),
             interval_seconds=float(a.get('interval_seconds', 120)),
-            game_title_regex=str(a.get('game_title_regex', '')),
-            anti_afk_key=str(a.get('anti_afk_key', 'space')),
+            method=str(
+                a.get(
+                    'method',
+                    'space',
+                )
+            ).strip().lower(),
         ),
         theme=str(data.get('theme', 'midnight')),
     )

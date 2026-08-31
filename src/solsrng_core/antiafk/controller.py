@@ -3,32 +3,36 @@ from __future__ import annotations
 import shutil
 import subprocess
 import threading
+import time
 from typing import Callable
 
 
 class WindowError(RuntimeError):
-    pass
+    """Raised when Anti-AFK cannot perform an input action."""
 
 
 class AntiAFKController:
     """
-    Wayland-safe Anti-AFK.
+    Anti-AFK controller with two modes.
 
-    Does not search for, focus, or switch windows.
-    Sends the configured key through ydotool so the
-    existing macro can keep control of the game.
+    SPACE:
+        Wait for the configured interval, then press Space.
+
+    ALT+TAB:
+        Alt+Tab to the next window, press Space, then Alt+Tab back.
     """
+
+    SPACE_MODE = "space"
+    ALT_TAB_MODE = "alt_tab"
 
     def __init__(
         self,
         interval_seconds: float = 120.0,
-        key: str = "space",
-        game_title_regex: str = "",
+        method: str = SPACE_MODE,
         log: Callable[[str], None] | None = None,
     ):
         self.interval_seconds = max(1.0, float(interval_seconds))
-        self.key = key.strip() or "space"
-        self.game_title_regex = game_title_regex
+        self.method = self._normalize_method(method)
         self.log = log or (lambda _: None)
 
         self._stop = threading.Event()
@@ -39,6 +43,28 @@ class AntiAFKController:
                 "ydotool is not installed or not in PATH"
             )
 
+    @classmethod
+    def _normalize_method(cls, method: str) -> str:
+        value = str(method).strip().lower()
+
+        aliases = {
+            "space": cls.SPACE_MODE,
+            "space mode": cls.SPACE_MODE,
+            "alt+tab": cls.ALT_TAB_MODE,
+            "alt-tab": cls.ALT_TAB_MODE,
+            "alt tab": cls.ALT_TAB_MODE,
+            "alt_tab": cls.ALT_TAB_MODE,
+        }
+
+        normalized = aliases.get(value)
+
+        if normalized is None:
+            raise WindowError(
+                f"Unsupported Anti-AFK method: {method}"
+            )
+
+        return normalized
+
     @property
     def running(self) -> bool:
         return (
@@ -46,151 +72,117 @@ class AntiAFKController:
             and self._thread.is_alive()
         )
 
-    def _send_key(self) -> None:
-        """
-        Send a press + release using ydotool.
-
-        Common Linux key names are accepted by ydotool,
-        e.g. space, enter, w, a, s, d.
-        """
-        result = subprocess.run(
-            ["ydotool", "key", f"{self._keycode(self.key)}:1", f"{self._keycode(self.key)}:0"],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-
-        if result.returncode != 0:
-            error = result.stderr.strip() or "unknown ydotool error"
-            raise WindowError(error)
-
     @staticmethod
     def _keycode(key: str) -> int:
-        key = key.lower().strip()
-
         keycodes = {
-            "esc": 1,
-            "escape": 1,
-            "1": 2,
-            "2": 3,
-            "3": 4,
-            "4": 5,
-            "5": 6,
-            "6": 7,
-            "7": 8,
-            "8": 9,
-            "9": 10,
-            "0": 11,
-            "minus": 12,
-            "equals": 13,
-            "backspace": 14,
             "tab": 15,
-            "q": 16,
-            "w": 17,
-            "e": 18,
-            "r": 19,
-            "t": 20,
-            "y": 21,
-            "u": 22,
-            "i": 23,
-            "o": 24,
-            "p": 25,
-            "leftbracket": 26,
-            "rightbracket": 27,
-            "enter": 28,
-            "return": 28,
-            "ctrl": 29,
-            "a": 30,
-            "s": 31,
-            "d": 32,
-            "f": 33,
-            "g": 34,
-            "h": 35,
-            "j": 36,
-            "k": 37,
-            "l": 38,
-            "semicolon": 39,
-            "apostrophe": 40,
-            "grave": 41,
-            "shift": 42,
-            "backslash": 43,
-            "z": 44,
-            "x": 45,
-            "c": 46,
-            "v": 47,
-            "b": 48,
-            "n": 49,
-            "m": 50,
-            "comma": 51,
-            "period": 52,
-            "slash": 53,
-            "rightshift": 54,
-            "kpasterisk": 55,
-            "alt": 56,
             "space": 57,
-            "capslock": 58,
-            "f1": 59,
-            "f2": 60,
-            "f3": 61,
-            "f4": 62,
-            "f5": 63,
-            "f6": 64,
-            "f7": 65,
-            "f8": 66,
-            "f9": 67,
-            "f10": 68,
-            "numlock": 69,
-            "scrolllock": 70,
-            "f11": 87,
-            "f12": 88,
-            "rightctrl": 97,
-            "rightalt": 100,
-            "home": 102,
-            "up": 103,
-            "pageup": 104,
-            "left": 105,
-            "right": 106,
-            "end": 107,
-            "down": 108,
-            "pagedown": 109,
-            "insert": 110,
-            "delete": 111,
+            "alt": 56,
         }
 
-        if key.isdigit():
-            code = keycodes.get(key)
-            if code is not None:
-                return code
+        normalized = str(key).strip().lower()
 
-        if key in keycodes:
-            return keycodes[key]
+        if normalized not in keycodes:
+            raise WindowError(
+                f"Unsupported Anti-AFK key: {key}"
+            )
 
-        if len(key) == 1 and key in keycodes:
-            return keycodes[key]
+        return keycodes[normalized]
 
-        raise WindowError(
-            f"Unsupported Anti-AFK key: {key}"
+    def _ydotool(
+        self,
+        *key_events: str,
+        timeout: float = 5.0,
+    ) -> None:
+        if not key_events:
+            return
+
+        try:
+            result = subprocess.run(
+                ["ydotool", "key", *key_events],
+                text=True,
+                capture_output=True,
+                check=False,
+                timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            raise WindowError(
+                "ydotool timed out while sending input"
+            )
+        except OSError as exc:
+            raise WindowError(
+                f"Unable to execute ydotool: {exc}"
+            )
+
+        if result.returncode != 0:
+            error = (
+                result.stderr.strip()
+                or result.stdout.strip()
+                or "unknown ydotool error"
+            )
+            raise WindowError(error)
+
+    def _press_space(self) -> None:
+        code = self._keycode("space")
+
+        self._ydotool(
+            f"{code}:1",
+            f"{code}:0",
         )
 
-    def swap_to_game(self):
-        """
-        Kept for compatibility with the GUI.
+    def _alt_tab_once(self) -> None:
+        alt = self._keycode("alt")
+        tab = self._keycode("tab")
 
-        Wayland does not need an explicit game-window swap.
-        The game should already be the focused window.
-        """
+        self._ydotool(
+            f"{alt}:1",
+            f"{tab}:1",
+            f"{tab}:0",
+            f"{alt}:0",
+        )
+
+    def _run_space_mode(self) -> None:
+        self._press_space()
+
         self.log(
-            "Anti-AFK: leaving current focus unchanged"
+            "Anti-AFK: Space pressed"
         )
-        return None
 
-    def restore_previous_window(self) -> None:
-        """
-        Kept for GUI compatibility.
+    def _run_alt_tab_mode(self) -> None:
+        self._alt_tab_once()
+        time.sleep(0.20)
 
-        Nothing is restored because Anti-AFK never changes focus.
-        """
-        return None
+        try:
+            self._press_space()
+
+            self.log(
+                "Anti-AFK: Alt+Tab → Space"
+            )
+
+        finally:
+            time.sleep(0.20)
+
+            try:
+                self._alt_tab_once()
+            except WindowError as exc:
+                self.log(
+                    f"Anti-AFK: failed to Alt+Tab back: {exc}"
+                )
+                raise
+
+        self.log(
+            "Anti-AFK: returned to previous window"
+        )
+
+    def _tick(self) -> None:
+        if self.method == self.SPACE_MODE:
+            self._run_space_mode()
+        elif self.method == self.ALT_TAB_MODE:
+            self._run_alt_tab_mode()
+        else:
+            raise WindowError(
+                f"Unsupported Anti-AFK method: {self.method}"
+            )
 
     def start(self) -> None:
         if self.running:
@@ -198,8 +190,18 @@ class AntiAFKController:
 
         self._stop.clear()
 
-        # Verify that ydotoold/socket is available before starting.
-        self._send_key()
+        # Verify that ydotool works before starting the worker.
+        if self.method == self.SPACE_MODE:
+            self._press_space()
+        else:
+            self._alt_tab_once()
+            time.sleep(0.20)
+
+            try:
+                self._press_space()
+            finally:
+                time.sleep(0.20)
+                self._alt_tab_once()
 
         self._thread = threading.Thread(
             target=self._loop,
@@ -208,36 +210,62 @@ class AntiAFKController:
         )
         self._thread.start()
 
+        mode_name = (
+            "Space"
+            if self.method == self.SPACE_MODE
+            else "Alt+Tab → Space → Alt+Tab"
+        )
+
         self.log(
             f"Anti-AFK started "
-            f"(every {self.interval_seconds:g}s, key={self.key})"
+            f"(every {self.interval_seconds:g}s, mode={mode_name})"
         )
 
     def stop(self, restore: bool = True) -> None:
+        del restore
+
         self._stop.set()
 
         thread = self._thread
 
         if (
-            thread
+            thread is not None
             and thread is not threading.current_thread()
         ):
-            thread.join(timeout=2.0)
+            thread.join(timeout=3.0)
+
+            if thread.is_alive():
+                self.log(
+                    "Anti-AFK worker did not stop within timeout"
+                )
 
         self._thread = None
 
         self.log("Anti-AFK stopped")
 
     def _loop(self) -> None:
-        while not self._stop.wait(
-            self.interval_seconds
-        ):
+        while not self._stop.wait(self.interval_seconds):
             try:
-                self._send_key()
-                self.log(
-                    f"Anti-AFK key sent: {self.key}"
-                )
+                self._tick()
+
             except WindowError as exc:
                 self.log(
                     f"Anti-AFK error: {exc}"
                 )
+
+            except Exception as exc:
+                self.log(
+                    f"Anti-AFK unexpected error: {exc}"
+                )
+
+    def swap_to_game(self) -> None:
+        self.log(
+            "Anti-AFK: focus switching is handled "
+            "automatically by Alt+Tab mode"
+        )
+
+    def restore_previous_window(self) -> None:
+        self.log(
+            "Anti-AFK: previous-window restore is handled "
+            "automatically by Alt+Tab mode"
+        )

@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.bak
+*.bak2
+*.log
+backups/
+*.before-*
+*.pre-monitor
+src/solsrng_core.egg-info/

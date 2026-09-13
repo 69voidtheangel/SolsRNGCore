@@ -1,11 +1,61 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
-*.bak
-*.bak2
+*.pyd
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+source/
+
+# Packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Logs / temporary files
 *.log
-backups/
+*.tmp
+*.temp
+
+# Backups
+*.bak
+*.backup
+*.backup.*
 *.before-*
-*.pre-monitor
-src/solsrng_core.egg-info/
+*.orig
+*~
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local configuration / personal settings
+config.json
+config.local.json
+*.local.json
+*.local.yaml
+*.local.yml
+.env
+.env.*
+
+# Runtime / user data
+profiles/
+data/
+cache/
+cookies/
+sessions/
+tokens/
+
+# SolsRNG local runtime files
+automation.json
+core.json
+core.json.bak
+automation.json.bak

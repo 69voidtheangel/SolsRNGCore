@@ -1,0 +1,7 @@
+# SolsRNGCore Python runtime dependencies
+
+# GUI
+PySide6>=6.8,<7
+
+# Discord / HTTP
+requests>=2.32,<3

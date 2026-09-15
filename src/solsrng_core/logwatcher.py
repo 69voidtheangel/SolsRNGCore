@@ -237,6 +237,11 @@ class SoberBiomeWatcher:
             large_image.get("hoverText", "")
         ).strip().upper()
 
+        # Sober reports Sandstorm as "SAND STORM", while Sol's RNG Core
+        # uses the canonical registered biome name "SANDSTORM".
+        if biome == "SAND STORM":
+            biome = "SANDSTORM"
+
         # Unknown/custom biomes are valid observations too.
         # Let the actual name reach the application so it can
         # use the backup Discord notification path.
